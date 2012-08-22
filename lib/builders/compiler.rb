@@ -35,11 +35,11 @@ module Wheel
       File.delete("#{package_dir}/#{manifest}.js") if File.exist?("#{package_dir}/#{manifest}.js")
       File.delete("#{package_dir}/#{manifest}.min.js") if File.exist?("#{package_dir}/#{manifest}.min.js")
 
-      File.open("#{package_dir}/#{filename}.js", 'w') do |f|
+      File.open("#{package_dir}/#{filename}.js", File::RDWR|File::TRUNC|File::CREAT) do |f|
         f.write source
       end
 
-      File.open("#{package_dir}/#{filename}.min.js", 'w') do |f|
+      File.open("#{package_dir}/#{filename}.min.js", File::RDWR|File::TRUNC|File::CREAT) do |f|
         f.write Uglifier.compile(source)
       end
     end
