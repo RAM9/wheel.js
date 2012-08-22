@@ -47,7 +47,8 @@ namespace :compile do
 
   desc "Compile wheel_standalone.js manifest"
   task :standalone do
-    Wheel::Compiler.make "wheel_standalone","wheel-standalone-#{`date +%s`.chomp}"
+    version = IO.read(File.join(File.dirname(__FILE__),'VERSION')).chomp
+    Wheel::Compiler.make "wheel_standalone","wheel-standalone-#{version}"
   end
 
   desc "Compile wheel_app_jquery.js manifest"
