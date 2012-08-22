@@ -9,19 +9,22 @@ module Wheel
     end
 
     def self.source manifest
+      manifest_relative_path = File.join(root_dir,
+                                         'lib','wheel','manifests')
+
       files = []
-      File.open("#{root_dir}/lib/wheel/manifests/#{manifest}.js").each_line do |line|
-        matches = line.match /^\/\/= require (.*)/
-        files << matches.captures.last if matches
+      File.open(File.join(manifest_relative_path,"#{manifest}.js")).each_line do |line|
+        if line =~ /^\/\/= require (.*)/
+          files << File.join(manifest_relative_path,$1)
+        elsif line =~ /^\/\/= require_tree (.*)/
+          files = files + Dir[File.join(manifest_relative_path,$1,'**','*')]
+        else
+        end
       end
 
       source = ""
       files.each do |file|
-        if file.match /^wheel\//
-          source << File.read("#{root_dir}/lib/#{file}")
-        else
-          source << File.read("#{root_dir}/lib/wheel/manifests/#{file}")
-        end
+          source << File.read(file)
       end
 
       source
