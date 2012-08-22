@@ -20,28 +20,29 @@ module Wheel
         if file.match /^wheel\//
           source << File.read("#{root_dir}/lib/#{file}")
         else
-          source << File.read("#{root_dir}/vendor/javascripts/#{file}")
+          source << File.read("#{root_dir}/lib/wheel/manifests/#{file}")
         end
       end
 
       source
     end
 
-    def self.rewrite manifest, source
+    def self.rewrite manifest, source, filename = nil
+      filename = manifest unless filename
       File.delete("#{package_dir}/#{manifest}.js") if File.exist?("#{package_dir}/#{manifest}.js")
       File.delete("#{package_dir}/#{manifest}.min.js") if File.exist?("#{package_dir}/#{manifest}.min.js")
 
-      File.open("#{package_dir}/#{manifest}.js", 'w') do |f|
+      File.open("#{package_dir}/#{filename}.js", 'w') do |f|
         f.write source
       end
 
-      File.open("#{package_dir}/#{manifest}.min.js", 'w') do |f|
+      File.open("#{package_dir}/#{filename}.min.js", 'w') do |f|
         f.write Uglifier.compile(source)
       end
     end
 
-    def self.make manifest
-      rewrite( manifest, source(manifest) )
+    def self.make manifest, filename = nil
+      rewrite( manifest, source(manifest) , filename)
     end
   end
 end

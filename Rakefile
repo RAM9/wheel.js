@@ -45,6 +45,11 @@ namespace :compile do
     Wheel::Compiler.make "wheel_base"
   end
 
+  desc "Compile wheel_standalone.js manifest"
+  task :standalone do
+    Wheel::Compiler.make "wheel_standalone","wheel-standalone-#{`date +%s`.chomp}"
+  end
+
   desc "Compile wheel_app_jquery.js manifest"
   task :jquery do
     Wheel::Compiler.make "wheel_app_jquery"
