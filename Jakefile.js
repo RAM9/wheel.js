@@ -52,6 +52,8 @@ task('build', [], function (params) {
       'src/utils/storage_fill.js'
     ]
   };
+  // modern + base is standalone modern
+  manifests['standalone-modern'] = manifests.modern.concat(manifests.base);
 
   var fs = require('fs');
   var parser = require('uglify-js').parser;
