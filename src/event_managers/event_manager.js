@@ -1,4 +1,3 @@
-/* This was inspired by Zepto.js */
 Wheel.View.subclass('Wheel.EventManager', {
   initializeDom: function(opts) {
     this.optionize(opts);
@@ -7,17 +6,17 @@ Wheel.View.subclass('Wheel.EventManager', {
 
   listen: function() {
     var self = this;
-    this.$.on('draginit', function(e) {
-      self.onDragInit(e);
+    this.$.on('pullinit', function(e) {
+      self.onPullInit(e);
     });
   },
 
-  onDragInit: function(e) {
+  onPullInit: function(e) {
     e.preventDefault();
     this._setTarget(e);
-    this.touch.type = 'drag';
+    this.touch.type = 'pull';
     e = this._unpackEvent(e);
-		this._triggerEvent(e, 'dragstart');
+		this._triggerEvent(e, 'pullstart');
   },
 
   onStart: function(e) {
@@ -47,7 +46,7 @@ Wheel.View.subclass('Wheel.EventManager', {
   },
 
   onMove: function(e) {
-    this._handleDragMove(e);
+    this._handlePullMove(e);
     if (this.touch.type) { return; }
     e = this._unpackEvent(e);
     this._testSwipe(e);
@@ -56,7 +55,7 @@ Wheel.View.subclass('Wheel.EventManager', {
   onEnd: function(e) {
     e = this._unpackEvent(e);
     this._triggerEvent(e, 'tapend');
-    this._handleDragEnd(e);
+    this._handlePullEnd(e);
     if (this.touch.type || this.touch.ctrl) {
       this._resetTouch();
     } else {
@@ -64,16 +63,14 @@ Wheel.View.subclass('Wheel.EventManager', {
     }
   },
 
-  _triggerEvent: function(originalEvent, altType) {
+  _triggerEvent: function(originalEvent, altType, eventOpts) {
     if (!this.target) { return; }
-    var x = 'x2' in this.touch ? this.touch.x2 : this.touch.x1;
-    var y = 'y2' in this.touch ? this.touch.y2 : this.touch.y1;
+    eventOpts = eventOpts || {};
+    eventOpts.pageX = 'x2' in this.touch ? this.touch.x2 : this.touch.x1;
+    eventOpts.pageY = 'y2' in this.touch ? this.touch.y2 : this.touch.y1;
+    eventOpts.originalEvent = originalEvent;
 
-    this.target.trigger($.Event(altType || this.touch.type, {
-      originalEvent: originalEvent,
-      pageX: x,
-      pageY: y
-    }));
+    this.target.trigger($.Event(altType || this.touch.type, eventOpts));
   },
 
   _setTarget: function(e) {
@@ -119,18 +116,33 @@ Wheel.View.subclass('Wheel.EventManager', {
     }
   },
 
-  _handleDragMove: function(e) {
-    if (this.touch.type && this.touch.type === 'drag') {
+  _handlePullMove: function(e) {
+    if (this.touch.type && this.touch.type === 'pull') {
       e.preventDefault();
       e = this._unpackEvent(e);
-      this._triggerEvent(e, 'dragmove');
+      this._triggerEvent(e, 'pullmove', this._eventDetails());
     }
   },
 
-  _handleDragEnd: function(e) {
-    if (this.touch.type && this.touch.type === 'drag') {
+  _eventDetails: function() {
+    var deltaX = this.touch.x2 - this.touch.x1;
+    var deltaY = this.touch.y2 - this.touch.y1;
+    var deltaTime = Date.now() - this.touch.time;
+    var distance = Math.sqrt(deltaX*deltaX + deltaY*deltaY);
+    return {
+      deltaX: deltaX,
+      deltaY: deltaY,
+      deltaTime: deltaTime,
+      distance: distance,
+      velocity: distance/deltaTime,
+      angle: Math.atan2(deltaY,deltaX)
+    };
+  },
+
+  _handlePullEnd: function(e) {
+    if (this.touch.type && this.touch.type === 'pull') {
       e = this._unpackEvent(e);
-      this._triggerEvent(e, 'dragend');
+      this._triggerEvent(e, 'pullend');
     }
   },
 
@@ -164,7 +176,7 @@ Wheel.View.subclass('Wheel.EventManager', {
       if ( this.preventScroll(_direction) ) {
         e.preventDefault();
       }
-      this._triggerEvent(e);
+      this._triggerEvent(e, "swipe", this._eventDetails());
       this._triggerEvent(e, "swipe" + _direction);
     }
   },

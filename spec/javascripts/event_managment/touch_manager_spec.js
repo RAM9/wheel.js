@@ -271,6 +271,25 @@ describe('Wheel.TouchManager', function() {
       expect(args.pageY).toBe(touches[0].pageY);
     });
 
+    it('swipe events include velocity etc', function() {
+      div.trigger(startEvent);
+
+      waits(100);
+      runs(function() {
+        touches[0].pageX = touches[0].pageX + manager.SWIPE_TOLERANCE + 1;
+        moveEvent = $.Event('touchmove', {touches: touches});
+        div.trigger(moveEvent);
+
+        var event = events.swipe.mostRecentCall.args[0];
+        expect(event.velocity).not.toBe(undefined);
+        expect(event.deltaX).not.toBe(undefined);
+        expect(event.deltaY).not.toBe(undefined);
+        expect(event.deltaTime).not.toBe(undefined);
+        expect(event.distance).not.toBe(undefined);
+        expect(event.angle).not.toBe(undefined);
+      });
+    });
+
     it('triggers swiperight', function() {
       div.trigger(startEvent);
 
@@ -560,41 +579,83 @@ describe('Wheel.TouchManager', function() {
     });
   });
 
-  describe('drag events', function() {
-    describe('when draginit in triggered on an element', function() {
-      var dragmove, dragend;
+  describe('pull events', function() {
+    describe('when pullinit in triggered on an element', function() {
+      var pullmove, pullend;
       beforeEach(function() {
-        dragmove = jasmine.createSpy();
-        dragend = jasmine.createSpy();
-        div.on('dragmove', dragmove);
-        div.on('dragend', dragend);
+        pullmove = jasmine.createSpy();
+        pullend = jasmine.createSpy();
+        div.on('pullmove', pullmove);
+        div.on('pullend', pullend);
 
         div.trigger($.Event('touchstart', {touches: touches}));
-        div.trigger($.Event('draginit', {touches: touches}));
+        div.trigger($.Event('pullinit', {touches: touches}));
       });
 
-      it('listens on touchmove and triggers dragmove', function() {
+      it('listens on touchmove and triggers pullmove', function() {
         div.trigger($.Event('touchmove', {touches: touches}));
-        expect(dragmove).toHaveBeenCalled();
+        expect(pullmove).toHaveBeenCalled();
       });
 
-      it('dragmove creates an event that passes on the page data', function() {
-        div.trigger($.Event('touchmove', {touches: [{pageX: 150, pageY: 275}]}));
-        var event = dragmove.mostRecentCall.args[0];
-        expect(event.pageX).toBe(150);
-        expect(event.pageY).toBe(275);
+      describe('pullmove events', function() {
+        it('pass on the page data', function() {
+          div.trigger($.Event('touchmove', {touches: [{pageX: 150, pageY: 275}]}));
+          var event = pullmove.mostRecentCall.args[0];
+          expect(event.pageX).toBe(150);
+          expect(event.pageY).toBe(275);
+        });
+
+        it('has deltaX and deltaY', function() {
+          div.trigger($.Event('touchmove', {touches: [{pageX: 150, pageY: 275}]}));
+          var event = pullmove.mostRecentCall.args[0];
+          expect(event.deltaX).toBe(50);
+          expect(event.deltaY).toBe(75);
+        });
+
+        it('has deltaTime', function() {
+          waits(100);
+          runs(function() {
+            div.trigger($.Event('touchmove', {touches: [{pageX: 150, pageY: 275}]}));
+            var event = pullmove.mostRecentCall.args[0];
+            expect(event.deltaTime).toBeGreaterThan(100);
+          });
+        });
+
+        it('has a total distance', function() {
+          var distance = Math.sqrt(50*50 + 75*75);
+          div.trigger($.Event('touchmove', {touches: [{pageX: 150, pageY: 275}]}));
+          var event = pullmove.mostRecentCall.args[0];
+          expect(event.distance).toBe(distance);
+        });
+
+        it('has velocity', function() {
+          waits(100);
+          runs(function() {
+            var distance = Math.sqrt(50*50 + 75*75);
+            div.trigger($.Event('touchmove', {touches: [{pageX: 150, pageY: 275}]}));
+            var event = pullmove.mostRecentCall.args[0];
+            expect(event.velocity).toBeCloseTo(distance/100, 0.1);
+          });
+        });
+
+        it('has angular direction', function() {
+          var angle = Math.atan2(75,50);
+          div.trigger($.Event('touchmove', {touches: [{pageX: 150, pageY: 275}]}));
+          var event = pullmove.mostRecentCall.args[0];
+          expect(event.angle).toBe(angle);
+        });
       });
 
-      it('triggers dragend on touchend', function() {
+      it('triggers pullend on touchend', function() {
         div.trigger($.Event('touchend', {changedTouches: touches}));
-        expect(dragend).toHaveBeenCalled();
+        expect(pullend).toHaveBeenCalled();
       });
     });
 
     describe('other events are not triggered', function() {
       beforeEach(function() {
         div.on('touchstart', function(e) {
-          div.trigger($.Event('draginit', {touches: e.touches}));
+          div.trigger($.Event('pullinit', {touches: e.touches}));
         });
         startEvent = $.Event('touchstart', {touches: touches});
         div.trigger(startEvent);
