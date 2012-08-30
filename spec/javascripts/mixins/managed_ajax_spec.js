@@ -1,34 +1,36 @@
-describe("Wheel.Mixins.Ajax", function () {
+describe("Wheel.Mixins.ManagedAjax", function () {
   var Sender, sender;
 
   beforeEach(function() {
-    spyOn($, 'ajax');
+    Wheel.Utils.RequestQueue.singleton = {
+      add: jasmine.createSpy()
+    };
 
-    // since the base class auto mixes in ManagedAjax,
-    // because the mixin is available, tests are going
-    // to the real Wheel._Class creator
-    Sender = Wheel._Class.subclass({
-      url: 'http://csenderity.com',
-      send: function (overrides) {
-        this.bar = 'foo';
-        this._super(overrides);
+    Sender = Wheel.View.subclass({
+      init: function () {
+        this.url = 'http://csenderity.com';
       },
+      send: function (overrides) { this.bar = 'foo'; this._super(overrides); },
       data: function() { return {}; },
-      onSuccess: function(response)    { this.response = response },
+      onSuccess: function(response) { this.response = response; },
       onCompletion: function(response) { this.response = response },
-      onError: function(response)      { this.response = response }
+      onError: function(response) { this.response = response }
+    },{
+      template: function() {
+        return "<a class='click' href='http://csenderity.com'>Csender</a>"
+      }
     });
-    Sender.mixin(Wheel.Mixins.Ajax);
+    Sender.mixin(Wheel.Mixins.ManagedAjax);
 
     sender = new Sender();
   });
 
-  describe("requests", function() {
+  describe("send", function () {
     var args, data;
     var sendWith = function(httpMethod) {
       sender.httpMethod = httpMethod;
       sender.send();
-      args = $.ajax.mostRecentCall.args[0];
+      args = Wheel.Utils.RequestQueue.singleton.add.mostRecentCall.args[0];
     };
 
     beforeEach(function() {
@@ -48,7 +50,7 @@ describe("Wheel.Mixins.Ajax", function () {
       });
 
       it("calls the request queue's send method", function () {
-        expect($.ajax).toHaveBeenCalled();
+        expect(sender._requestQueue.add).toHaveBeenCalled();
       });
 
       it("uses the right url", function() {
@@ -67,7 +69,7 @@ describe("Wheel.Mixins.Ajax", function () {
           async: false
         });
 
-        args = $.ajax.mostRecentCall.args[0];
+        args = sender._requestQueue.add.argsForCall[0][0];
         expect(args.type).toBe('HEAD');
         expect(args.async).toBe(false);
       });
@@ -78,7 +80,7 @@ describe("Wheel.Mixins.Ajax", function () {
           async: false
         });
 
-        args = $.ajax.mostRecentCall.args[0];
+        args = sender._requestQueue.add.argsForCall[0][0];
         expect(args.type).toBe('HEAD');
         expect(args.async).toBe(false);
       });
@@ -88,7 +90,7 @@ describe("Wheel.Mixins.Ajax", function () {
           data: {foo: 'bar'}
         });
 
-        args = $.ajax.mostRecentCall.args[0];
+        args = sender._requestQueue.add.argsForCall[0][0];
         expect(args.data).toEqual({foo: 'bar'});
       });
     });
@@ -98,27 +100,35 @@ describe("Wheel.Mixins.Ajax", function () {
         sendWith('get');
       });
 
-      it("binds the success handler", function () {
-        args.success('success response');
-        expect(sender.response).toBe('success response');
+      it("uses the object as context", function () {
+        expect(args.context).toBe(sender);
+      });
+
+      it("registers a success handler", function () {
+        expect(args.success).toBe(sender.onSuccess)
       });
 
       it("registers an error handler", function () {
-        args.error({
-          responseText: '"error response"',
-          statusCode: function() { return 404; }
-        });
-        expect(sender.response).toBe('error response');
+        expect(args.error).toBe(sender.processError);
       });
 
       it("registers a complete handler", function () {
-        args.complete('complete response');
-        expect(sender.response).toBe('complete response');
+        expect(args.complete).toBe(sender.onCompletion);
       });
     });
   });
 
   describe('mixin call the class defined callbacks', function() {
+    it('onSuccess(response)', function() {
+      sender.onSuccess({status: 'all good'});
+      expect(sender.response).toEqual({status: 'all good'});
+    });
+
+    it('onCompletion(response)', function() {
+      sender.onCompletion({status: 'done!'});
+      expect(sender.response).toEqual({status: 'done!'});
+    });
+
     describe('processError(xhr)', function () {
       beforeEach(function () {
         spyOn(sender, 'onError');
@@ -141,6 +151,4 @@ describe("Wheel.Mixins.Ajax", function () {
     });
   });
 });
-
-
 

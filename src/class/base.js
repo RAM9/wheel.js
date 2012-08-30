@@ -36,18 +36,19 @@ Wheel._Class.subclass('Wheel.Base', {
   },
 
   publish: function(eventType, eventData) {
-    this._throwIfNoPublisher();
-    Wheel.Publisher.trigger(eventType, eventData);
+    this._publisher || this._findPublisher();
+    this._publisher.trigger(eventType, eventData);
   },
 
   subscribe: function(eventName, callback, context) {
-    this._throwIfNoPublisher();
-    Wheel.Publisher.on(eventName, callback, context || this);
+    this._publisher || this._findPublisher();
+    this._publisher.on(eventName, callback, context || this);
   },
 
-  _throwIfNoPublisher: function() {
-    if (!Wheel.Publisher) {
-      throw "Wheel.Publisher is not defined. We cannot use publish/subscribe yet!";
+  _findPublisher: function() {
+    this._publisher = (this._class.App && this._class.App.app) || Wheel.Publisher;
+    if (!this._publisher) {
+      throw "Cannot find app or Wheel.Publisher. Please namespace your classes under an application class or assign a Wheel.Publisher";
     }
   }
 }, {
@@ -59,12 +60,12 @@ Wheel._Class.subclass('Wheel.Base', {
   build: function() {
     var klass = this;
 
-    function creator(args) {
+    function Class(args) {
       return klass.apply(this, args);
     }
-    creator.prototype = klass.prototype;
+    Class.prototype = klass.prototype;
 
-    return new creator(arguments);
+    return new Class(arguments);
   },
 
   attrAccessor: function(prop) {
@@ -85,7 +86,7 @@ Wheel._Class.subclass('Wheel.Base', {
     var klass = this._subclass(name, iprops, cprops);
     if (klass.properties && klass.properties.length) {
       $.each(klass.properties, function(i, prop) {
-        if ( typeof klass.prototype[prop] != 'function' ) {
+        if ( typeof klass.prototype[prop] !== 'function' ) {
           klass.attrAccessor(prop);
         }
       });
@@ -95,7 +96,7 @@ Wheel._Class.subclass('Wheel.Base', {
       var length = path.length;
       var i, base = window;
       for (i = 0; i < length-1; i++) {
-        var base = window[path[i]];
+        base = window[path[i]];
         if (base && base._typeof === 'Wheel.App') {
           klass.App = base;
           break;
@@ -107,6 +108,12 @@ Wheel._Class.subclass('Wheel.Base', {
 });
 
 Wheel.Base.mixin(Wheel.Mixins.Events);
+
+if (Wheel.Mixins['ManagedAjax']) {
+  Wheel.Base.mixin(Wheel.Mixins.ManagedAjax);
+} else {
+  Wheel.Base.mixin(Wheel.Mixins.Ajax);
+}
 
 Wheel.Class = function(x, y, z) {
   return Wheel.Base.subclass(x, y, z);
